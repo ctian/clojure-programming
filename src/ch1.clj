@@ -57,7 +57,74 @@ pizza
 (namespace :location)
 ;= nil
 
-;;;;;; Symbols ( page 15 )
+0xff
+;= 255
 
+040
+;= 32
+
+2r111
+;= 7
+
+16rff
+;= 255
+
+8r12
+;= 10
+
+(type 10)
+;= java.lang.Long
+
+(type 10N)
+;= clojure.lang.BigInt
+
+(type 1.2)
+;= java.lang.Double
+
+(type 1.2M)
+;= java.math.BigDecimal
+
+(type 1/2)
+;= clojure.lang.Ratio
+
+3/12
+;= 1/4
+
+(type #"(p|h)ail")
+;= java.util.regex.Pattern
+
+(re-seq #"(...) (...)" "foo bar")
+;= (["foo bar" "foo" "bar"])
+
+(re-seq #"(\d+)-(\d+)" "1-3")  ;; would be "(\\d+)-(\\d+)" in java
+;= (["1-3" "1" "3"])
+
+(javadoc java.util.regex.Pattern)
+
+javadoc
+;= #<javadoc$javadoc clojure.java.javadoc$javadoc@68c0ec3>
+
+;; form-level comments using #_ reader macro
+(read-string "(+ 1 2 #_(* 2 2) 8)")
+;= (+ 1 2 8)
+
+;; comment forms always evaluate to nil
+(+ 1 2 (comment (* 2 2)) 8)
+;= NullPointerException   clojure.lang.Numbers.ops
+
+(+ 1 2 #_(* 2 2) 8)
+;= 11
+
+;; commas are considered whitespace by the reader
+(= [1 2 3] [1, 2, 3])
+;= true
+
+#'javadoc
+;= #'clojure.java.javadoc/javadoc
+
+`javadoc
+;= clojure.java.javadoc/javadoc
+
+;; Namespaces (page 20)
 
 
