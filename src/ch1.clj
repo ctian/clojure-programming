@@ -127,4 +127,36 @@ javadoc
 
 ;; Namespaces (page 20)
 
+(def x 1)
+;= #'user/x
+
+x
+;= 1
+
+(def x "hello")
+;= #'user/x
+
+x
+l= "hello"
+
+;; find current namespace
+*ns*
+;= #<Namespace user>
+
+;; create a new namespace. It has the side effect of switching to that
+;; new namespace in REPL
+(ns foo)
+;= nil
+
+*ns*
+;= #<Namespace foo>
+
+user/x
+;= "hello"
+
+x
+;= #<CompilerException java.lang.RuntimeException:
+;= Unable to resolve symbol: x in this context, compiling:(NO_SOURCE_PATH:0)>
+
+;; (p 22) We mentioned earlier that ....
 
