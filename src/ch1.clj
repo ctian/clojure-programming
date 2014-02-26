@@ -160,3 +160,75 @@ x
 
 ;; (p 22) We mentioned earlier that ....
 
+String
+;= java.lang.String
+
+Integer
+;= java.lang.Integer
+
+java.util.List
+;= java.util.List
+
+java.net.What
+; java.lang.ClassNotFoundException: java.net.What
+
+java.net.Socket
+;= java.net.Socket
+
+filter
+;= #<core$filter clojure.core$filter@234a98fa>
+
+(quote x)
+;= x
+(symbol? (quote x))
+;= true
+
+'x
+;= x
+
+'(+ x x)
+;= (+ x x)
+
+(list? '(+ x x))
+;= true
+
+;; peek what the reader produce by quoting a form
+
+''x
+;= (quote x)
+
+'#'x
+;= (var x)
+
+'@x
+;= (clojure.core/deref x)
+
+'#(+ % %)
+;= (fn* [p1__1148#] (+ p1__1148# p1__1148#))
+
+
+'`(a b ~c)
+;= (clojure.core/seq (clojure.core/concat (clojure.core/list (quote
+;foo/a)) (clojure.core/list (quote foo/b)) (clojure.core/list c)))
+
+(do
+  (println "hi")
+  (apply * [4 5 6]))
+; hi
+;= 120
+
+(let [a (inc (rand-int 6))
+      b (inc (rand-int 6))]
+  (println (format "You rolled a %s and a %s" a b))
+  (+ a b))
+;= 5
+
+(defn hypot [x y]
+  (let [x2 (* x x)
+        y2 (* y y)]
+    (Math/sqrt (+ x2 y2))))
+
+(hypot 3 4)
+
+(def v [42 "foo" 99.2 [5 12]])
+
