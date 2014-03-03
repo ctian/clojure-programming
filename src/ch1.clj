@@ -232,3 +232,127 @@ filter
 
 (def v [42 "foo" 99.2 [5 12]])
 
+(first v)
+(second v)
+(last v)
+(v 2)
+(nth v 2)
+(.get v 2)
+
+(let [[x y z] v]
+  (+ x z))
+;= 141.2
+
+;; the above is equivalent to
+(let [x (nth v 0)
+      y (nth v 1)
+      z (nth v 2)]
+  (+ x z))
+;= 141.2
+
+;; destructuring forms can be composed
+(let [[x _ _ [y z]] v]
+  (+ x y z))
+;= 59
+
+;; gathering extra-positional sequential values
+(let [[x & rest] v]
+  rest)
+;= ("foo" 99.2 [5 12])
+
+;; retaining the destructured value
+(let [[x _ z :as original-vector] v]
+  (conj original-vector (+ x z)))
+;= [42 "foo" 99.2 [5 12] 141.2]
+
+(def m {:a 5 :b 6
+        :c [7 8 9]
+        :d {:e 10 :f 11}
+        "foo" 88
+        42 false})
+
+(let [{a :a b :b} m]
+  (+ a b))
+;= 11
+
+;; any type of value may be used for lookup
+(let [{f "foo"} m]
+  (+ f 12))
+;= 100
+
+(let [{v 42} m]
+  (if v 1 0))
+;= 0
+
+;; Indices into vectors, strings, and arrays
+;; can be used as key in a map destructuring form
+(let [{x 3 y 8} [12 0 0 -18 44 6 0 0 1]]
+  (+ x y))
+;= -17
+
+(let [{{ e :e} :d} m]
+  (* 2 e))
+;= 20
+
+(let [{[x _ y] :c} m]
+  (+ x y))
+;= 16
+
+(def map-in-vector ["James" {:birthday (java.util.Date. 73 1 6)}])
+(let [[name {bd :birthday}] map-in-vector]
+  (str name " was born on " bd))
+;= "James was born on Tue Feb 06 00:00:00 EST 1973"
+
+;; retaining the destructured value
+(let [{r1 :x r2 :y :as randoms}
+      (zipmap [:x :y :z] (repeatedly (partial rand-int 10)))]
+  (assoc randoms :sum (+ r1 r2)))
+;= {:sum 6, :z 9, :y 0, :x 6}
+
+;; default values
+(let [{k :unknown x :a
+       :or {k 50}} m]
+  (+ k x))
+;= 55
+
+(let [{k :unknown x :a} m
+      k (or k 50)]
+  (+ x k))
+;= 55
+
+(let [{opt1 :option} {:option false}
+      opt1 (or opt1 true)
+      {opt2 :option :or {opt2 true}} {:option false}]
+  {:opt1 opt1 :opt2 opt2})
+;= {:opt1 true, :opt2 false}
+
+;; binding values to their keys' names
+(def chas {:name "Chas" :age 31 :location "massachusetts"})
+
+(let [{name :name age :age location :location} chas]
+  (format "%s is %s years old and lives in %s." name age location))
+;= "Chas is 31 years old and lives in massachusetts."
+
+(let [{:keys [name age location]} chas]
+  (format "%s is %s years old and lives in %s." name age location))
+;= "Chas is 31 years old and lives in massachusetts."
+
+(def brian {"name" "Brian" "age" 31 "location" "British Columbia"})
+(let [{:strs [name age location]} brian]
+  (format "%s is %s years old and lives in %s." name age location))
+;= "Brian is 31 years old and lives in British Columbia."
+
+(def christophe {'name "Christophe" 'age 33 'location "Rhone-Alpes"})
+(let [{:syms [name age location]} christophe]
+  (format "%s is %s years old and lives in %s." name age location))
+;= "Christophe is 33 years old and lives in Rhone-Alpes."
+
+
+
+
+
+
+
+
+
+
