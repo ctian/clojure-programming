@@ -347,8 +347,19 @@ filter
   (format "%s is %s years old and lives in %s." name age location))
 ;= "Christophe is 33 years old and lives in Rhone-Alpes."
 
+(def  user-info ["robert8990" 2011 :name "Bob" :city "Boston"])
 
+(let [[username account-year & extra-info] user-info
+      {:keys [name city]} (apply hash-map extra-info)]
+  (format "%s is in %s" name city))
+;= "Bob is in Boston"
 
+;; map destructuring of rest seqs
+(let [[username account-year & {:keys [name city]}] user-info]
+  (format "%s is in %s" name city))
+;= "Bob is in Boston"
+
+;; Creating Function: fn [ page 36 ]
 
 
 
