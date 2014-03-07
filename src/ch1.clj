@@ -359,7 +359,40 @@ filter
   (format "%s is in %s" name city))
 ;= "Bob is in Boston"
 
-;; Creating Function: fn [ page 36 ]
+;; create function using fn
+(fn [x]
+  (+ 10 x))
+;= #<foo$eval1095$fn__1096 foo$eval1095$fn__1096@46e9e26a>
+
+((fn [x] (+ 10 x)) 8)
+;= 18
+
+;; the above function call is equivalent to:
+(let [x 8] (+ 10 x))
+;= 18
+
+((fn [x y z] (+ x y z)) 3 4 12)
+;- 19
+
+;; the function call is the equivalent of the following let form
+(let [x 3
+      y 4
+      z 12]
+  (+ x y z))
+;= 19
+
+;; function with multiple arities
+(def strange-adder (fn adder-self-reference
+                     ([x] (adder-self-reference x 1))
+                     ([x y] (+ x y))))
+;= #'foo/strange-adder
+(strange-adder 10)
+;= 11
+(strange-adder 10 50)
+;= 60
+
+
+
 
 
 
