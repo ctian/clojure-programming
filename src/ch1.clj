@@ -361,8 +361,57 @@ filter
 
 ;; Creating Function: fn [ page 36 ]
 
+(def strange-adder (fn adder-self-reference
+                     ([x] (adder-self-reference x 1))
+                     ([x y] (+ x y))))
+(strange-adder 10)
+;= 11
+(strange-adder 10 50)
+;= 60
 
+;; create self-recursive function with named fn
+((fn fact [n]
+   (if (zero? n)
+     1
+     (* n (fact (dec n)))))
+ 5)
+;= 120
 
+;; mutually recursive functions with letfn
+(letfn [(my-odd? [n]
+          (my-even? (dec n)))
+        (my-even? [n]
+          (or (zero? n)
+              (my-odd? (dec n))))]
+  (my-odd? 11))
+;= true
+
+(defn strange-adder
+  ([x] (strange-adder x 1))
+  ([x y] (+ x y)))
+
+(strange-adder 10)
+(strange-adder 10 50)
+
+(defn concat-rest
+  [x & rest]
+  (apply str (butlast rest)))
+
+(concat-rest 0 1 2 3 4)
+;= "123"
+
+(defn make-user [& [user-id]]
+  {:user_id (or user-id
+                (str (java.util.UUID/randomUUID)))})
+
+(make-user)
+;= {:user_id "521ce3fd-9ce5-4f1f-b099-c12996c84e0f"}
+(make-user "Bobby")
+;= {:user_id "Bobby"}
+(make-user "Steve" "Jamie" "Anthony")
+;= {:user_id "Steve"}
+
+;; Keyword arguments [ page 39 ]
 
 
 
