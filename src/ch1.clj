@@ -385,18 +385,6 @@ filter
 (def strange-adder (fn adder-self-reference
                      ([x] (adder-self-reference x 1))
                      ([x y] (+ x y))))
-;= #'foo/strange-adder
-(strange-adder 10)
-;= 11
-(strange-adder 10 50)
-;= 60
-
-
-
-
-(def strange-adder (fn adder-self-reference
-                     ([x] (adder-self-reference x 1))
-                     ([x y] (+ x y))))
 (strange-adder 10)
 ;= 11
 (strange-adder 10 50)
