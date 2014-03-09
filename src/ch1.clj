@@ -432,7 +432,120 @@ filter
 (make-user "Steve" "Jamie" "Anthony")
 ;= {:user_id "Steve"}
 
-;; Keyword arguments [ page 39 ]
+;; keyword arguments built on top of the map destructuring
+;; of rest sequences that let provides.
+(defn make-user
+  [username & {:keys [email join-date]
+               :or {join-date (java.util.Date.)}}]
+  {:username username
+   :join-date join-date
+   :email email
+   ;; 2.592e9 -> one month in ms
+   :exp-date (java.util.Date. (long (+ 2.592e9 (.getTime join-date))))})
+
+(make-user "Bobby")
+;= {:username "Bobby", :join-date #inst "2014-03-09T16:37:28.484-00:00",;:email nil, :exp-date #inst "2014-04-08T16:37:28.484-00:00"}
+(make-user "Bobby"
+           :join-date (java.util.Date. 111 0 1)
+           :email "bobby@example.com")
+;= {:username "Bobby", :join-date #inst "2011-01-01T05:00:00.000-00:00",:email "bobby@example.com", :exp-date #inst
+;"2011-01-31T05:00:00.000-00:00"}
+
+;; function literals
+(fn [x y] (Math/pow x y))
+
+;; use reader sugar that is expanded into the former
+#(Math/pow %1 %2)
+
+
+(read-string "#(Math/pow %1 %2)")
+;= (fn* [p1__1130# p2__1131#] (Math/pow p1__1130# p2__1131#))
+
+;; There is no implicit do form in function literal
+(fn [x y]
+  (println (str x \^ y))
+  (Math/pow x y))
+
+#(do (println (str %1 \^ %2))
+     (Math/pow %1 %2))
+
+;; refer to the first argument to the function by using %
+#(Math/pow % %2)
+
+;; refer to rest arguments using the %& symbol
+(fn [x & rest]
+  (- x (apply + rest)))
+
+#(- % (apply + %&))
+
+;; function literals cannot be nested
+;; while this is perfectly legal
+(fn [x]
+  (fn [y]
+    (+ x y)))
+;; This is NOT:
+#(#(+ % %))
+
+;; if a conditional expression is logically false, and no else
+;; expression is provide, the result of an if expression is nil
+(if (not true) \t)
+;= nil
+
+;; true? and false? check for the Boolean values true and false, not
+;; the logical truth condition used by if.
+(true? "string")
+;= false
+
+(if "string" \t \f)
+;= \t
+
+;; recur transfers control to the local-most loop head without
+;; consuming stack space, which defined either by loop or a function.
+(loop [x 5]
+  (if (neg? x)
+    x
+    (recur (dec x))))
+;= -1
+
+(defn countdown [x]
+  (if (zero? x)
+    :blastoff!
+    (do (println x)
+        (recur (dec x)))))
+
+(countdown 5)
+; 5
+; 4
+; 3
+; 2
+; 1
+;= :blastoff!
+
+(def x 5)
+;= #'foo/x
+x
+;= 5
+
+;; get a reference to the var itself, rather then the value it holds
+;; with var
+(var x)
+;= #'foo/x
+
+;; reader macro #'
+#'x
+;= #'foo/x
+
+(read-string "#'x")
+;= (var x)
+
+;; Java Interop: . and new [ page 44 ]
+
+
+
+
+
+
+
 
 
 
