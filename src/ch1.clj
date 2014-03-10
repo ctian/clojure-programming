@@ -540,13 +540,63 @@ x
 
 ;; Java Interop: . and new [ page 44 ]
 
+;; all Java interoperability flows through the new and . special
+;; forms. The Clojure reader provides some syntactic sugar on top of
+;; these primitive interop forms that makes Java interop more concise
+;; in general and more syntactically consistent with Clojure's notion
+;; of function position for method calls and instantiation.
 
+(new java.util.ArrayList 100)
+(java.util.ArrayList. 100)
 
+(. Math pow 2 10)
+(Math/pow 2 10)
 
+(. "hello" substring 1 3)
+(.substring "hello"1 3)
 
+Integer/MAX_VALUE
+(. Integer MAX_VALUE)
 
+(. some-object some-field)
+(.someField some-object)
 
+;; Exception handling: try and throw
 
+;; Specialized mutation: set!
+
+;; Primitive locking: monitor-enter and monitor-exit
+
+;; eval is a function that evaluates a single argument form
+(eval :foo)
+;= :foo
+
+(eval [1 2 3])
+;= [1 2 3]
+
+(eval "text")
+;= "text"
+
+(eval '(+ 1 2 3))
+;= 6
+
+;; most problems where eval is applicable are better solved through
+;; judicious application of macros.
+
+;; reimplement the Clojure REPL with eval and read (or read-string)
+(eval (read-string "(+ 1 2 3)"))
+;= 6
+
+(defn embedded-repl
+  "A naive Clojure REPL implementation. Enter ':quit' to exit."
+  []
+  (print (str (ns-name *ns*) ">>> "))
+  (flush)
+  (let [expr (read)
+        value (eval expr)]
+    (when (not= :quit value)
+      (println value)
+      (recur))))
 
 
 
