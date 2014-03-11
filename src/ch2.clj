@@ -68,6 +68,127 @@ h
 
 ;; Applying ourselves partially [ page 65 ]
 
+;; function application is available in Clojure via apply
+(apply hash-map [:a 5 :b 6])
+;= {:a 5, :b 6}
+
+;; apply allows you to prefix the argument sequence with any number of
+;; explicit arguments.
+(def args [2 -2 10])
+(apply * 0.5 3 args)
+;= -60.0
+
+;; apply must be provided with all arguments to the function applied.
+;; partial application is where you can provide only some of the
+;; arguments to a function yielding a new function that can be called
+;; with the reminder of the arguments to the original function later.
+
+;; partial provides for partial application in Clojure
+(def only-strings (partial filter string?))
+;= #'user/only-strings
+(only-strings ["a" 5 "b" 6])
+;= ("a" "b")
+
+;; partial versus function literals
+
+;; function literals technically provide a superset of what partial
+;; provides.
+(#(filter string? %) ["a" 5 "b" 6])
+;= ("a" "b")
+
+;; function literals do not limit you to defining only the initial
+;; arguments to the function
+(#(filter % ["a" 5 "b" 6]) string?)
+;= ("a" "b")
+(#(filter % ["a" 5 "b" 6]) number?)
+;= (5 6)
+
+;; But function literals force you to fully specify all the arguments
+;; to the function, whereas partial allows you to be ignorant of such
+;; details
+(#(map *) [1 2 3] [4 5 6] [7 8 9])
+;= clojure.lang.ArityException: Wrong number of args (3) passed to:
+(#(map * %1 %2 %3) [1 2 3] [4 5 6] [7 8 9])
+;= (28 80 162)
+
+(#(apply map * %&) [1 2 3] [4 5 6] [7 8 9])
+;= (28 80 162)
+(#(apply map * %&) [1 2 3])
+;= (1 2 3)
+
+((partial map *) [1 2 3] [4 5 6] [7 8 9])
+;= (28 80 162)
+
+;; compositionality of functions refer to the ability of various parts
+;; to be joined together to create a well-formed composite that is
+;; itself reusable.
+
+(defn negated-sum-str
+  [& numbers]
+  (str (- (apply + numbers))))
+(negated-sum-str 10 12 3.4)
+;= "-25.4"
+
+;; function composition, implemented in Clojure via comp
+;; you can think of comp as defining a pipeline
+(def negated-sum-str (comp str - +))
+(negated-sum-str 10 12 3.4)
+;= "-25.4"
+
+(require '[clojure.string :as str])
+
+(def camel->keyword (comp keyword
+                          str/join
+                          (partial interpose \-)
+                          (partial map str/lower-case)
+                          #(str/split % #"(?<=[a-z])(?=[A-Z])")))
+;= #'user/camel->keyword
+(camel->keyword "CamelCase")
+;= :camel-case
+(camel->keyword "lowerCamelCase")
+;= :lower-camel-case
+
+(def camel-pairs-map (comp (partial apply hash-map)
+                           (partial map-indexed (fn [i x]
+                                                  (if (odd? i)
+                                                    x
+                                                    (camel->keyword x))))))
+(camel-pairs-map ["CamelCase" 5 "lowerCamelCase" 6])
+;= {:camel-case 5, :lower-camel-case 6}
+
+;; You can achieve much the same effect as comp using the -> and ->>
+;; macros.
+(defn camel->keyword
+  [s]
+  (->> (str/split s #"(?<=[a-z])(?=[A-Z])")
+       (map str/lower-case)
+       (interpose \-)
+       str/join
+       keyword))
+
+;; a HOF that returns a function that adds a given number to its
+;; argument
+(defn adder [n]
+  (fn [x] (+ n x)))
+;= #'user/adder
+((adder 5) 18)
+;= 23
+
+;; a higher-order function that doubles the result of calling the
+;; provided function.
+(defn doubler [f]
+  (fn [& args]
+    (* 2 (apply f args))))
+;= #'user/doubler
+(def double-+ (doubler +))
+;= #'user/double-+
+(double-+ 1 2 3)
+;= 12
+
+;; building a primitive logging system with composable higher-order
+;; functions [ page 72 ]
+
+
 
 
 
