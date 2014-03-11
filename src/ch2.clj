@@ -188,8 +188,66 @@ h
 ;; building a primitive logging system with composable higher-order
 ;; functions [ page 72 ]
 
+;; a higher-order function that returns a function that prints
+;; messages to any writer provided
+(defn print-logger [writer]
+  #(binding [*out* writer]
+     (println %)))
 
+(def *out*-logger (print-logger *out*))
+;= #'user/*out*-logger
+(*out*-logger "hello")
+; hello
+;= nil
 
+(def writer (java.io.StringWriter.))
+;= #'user/writer
+(def retained-logger (print-logger writer))
+;= #'user/retained-logger
+(retained-logger "hello")
+;= nil
+(str writer)
+;= "hello\n"
 
+(require 'clojure.java.io)
 
+(defn file-logger [file]
+  #(with-open [f (clojure.java.io/writer file :append true)]
+     ((print-logger f) %)))
+;= #'user/file-logger
 
+(def log->file (file-logger "messages.log"))
+;= #'user/log->file
+(log->file "hello")
+;= nil
+
+;; a higher-order function that routes a message to multiple loggers
+(defn multi-logger [& logger-fns]
+  #(doseq [f logger-fns]
+     (f %)))
+;= #'user/multi-logger
+
+(def log (multi-logger
+          (print-logger *out*)
+          (file-logger "messages.log")))
+;= #'user/log
+(log "hello again")
+; hello again
+;= nil
+
+;; a HOF that prepends timestamps to messages
+(defn timestamped-logger [logger]
+  #(logger (format "[%1$tY-%1$tm-%1$te %1$tH:%1$tM:%1$tS] %2$s"
+                   (java.util.Date.) %)))
+;= #'user/timestamped-logger
+
+(def log-timestamped (timestamped-logger
+                      (multi-logger
+                       (print-logger *out*)
+                       (file-logger "messages.log"))))
+;= #'user/log-timestamped
+(log-timestamped "goodbye, now")
+; [2014-03-11 09:25:10] goodbye, now
+;= nil
+
+;; Pure functions [ page 76 ]
