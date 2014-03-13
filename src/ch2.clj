@@ -251,3 +251,59 @@ h
 ;= nil
 
 ;; Pure functions [ page 76 ]
+
+;; An example of a function that is not Pure
+(require 'clojure.xml)
+
+(defn twitter-followers [username]
+  (->> (str "https://api.twitter.com/1/users/show.xml?screen_name=" username)
+       clojure.xml/parse
+       :content
+       (filter (comp #{:followers_count} :tag))
+       first
+       :content
+       first
+       Integer/parseInt))
+;= #'user/twitter-followers
+
+(twitter-followers "ClojureBook")
+
+;; calling memoizee with a function will return another function that
+;; has been memoized
+
+(defn prime? [n]
+  (cond
+   (== 1 n) false
+   (== 2 n) true
+   (even? n) false
+   :else (->> (range 3 (inc (Math/sqrt n)) 2)
+              (filter #(zero? (rem n %)))
+              empty?)))
+
+(time (prime? 1125899906842679))
+; "Elapsed time: 20743.88281 msecs"
+;= true
+
+(let [m-prime? (memoize prime?)]
+  (time (m-prime? 1125899906842679))
+  (time (m-prime? 1125899906842679)))
+; "Elapsed time: 2075.706828 msecs"
+; "Elapsed time: 0.091632 msecs"
+;= true
+
+;; functions with side-effects are generally not safe to memoize
+;; because memoization elides the invocation of the function in
+;; question, any side effects the underlying function might have
+;; caused or relied upon will not occur when a memoized result is
+;; returned
+(repeatedly 10 (partial rand-int 10))
+;= (9 7 0 1 3 2 8 2 2 8)
+(repeatedly 10 (partial (memoize rand-int) 10))
+;= (3 3 3 3 3 3 3 3 3 3)
+
+
+
+
+
+
+
