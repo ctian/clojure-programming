@@ -203,7 +203,231 @@
 ; "Elapsed time: 0.019556 msecs"
 ;= 1000000
 
-;; creating seqs [ page 92 ]
+;; creating seqs 
+;; Generally, a sequence is produced by a collection, either explicity
+;; via seq or via another function (like map) calling seq on its
+;; arguments implicitly.
+
+;; There are two ways to create a seq: cons and list*
+
+(cons 0 (range 1 5))
+;= (0 1 2 3 4)
+
+(cons :a [:b :c :d])
+;= (:a :b :c :d)
+
+(cons 0 (cons 1 (cons 2 (cons 3 (range 4 10)))))
+;= (0 1 2 3 4 5 6 7 8 9)
+
+(list* 0 1 2 3 (range 4 10))
+;= (0 1 2 3 4 5 6 7 8 9)
+
+;; cons and list* are most commonly used when writing macros and when
+;; assembling the next step of a lazy sequence.
+
+;; Lazy seqs
+(lazy-seq [1 2 3])
+;= (1 2 3)
+
+;; a sequence that lazily produces a sequence of random integers
+(defn random-ints
+  "Returns a lazy seq of random integers in the rang [0,limit)."
+  [limit]
+  (lazy-seq
+   (cons (rand-int limit)
+         (random-ints limit))))
+;= #'user/random-ints
+
+(take 10 (random-ints 50))
+;= (27 33 16 20 25 22 45 49 7 43)
+
+;; modify random-ints to print something every time a value is
+;; realized
+(defn random-ints [limit]
+  (lazy-seq
+   (println "realizing random number")
+   (cons (rand-int limit)
+         (random-ints limit))))
+;= #'user/random-ints
+
+(def rands (take 10 (random-ints 50)))
+;= #'user/rands
+(first rands)
+; realizing random number
+;= 31
+(nth rands 3)
+; realizing random number
+; realizing random number
+; realizing random number
+;= 6
+(count rands)
+; realizing random number
+; realizing random number
+; realizing random number
+; realizing random number
+; realizing random number
+; realizing random number
+;= 10
+
+;; cons and list* functions do NOT force the evaluation of the
+;; squences they are provided as their final argument. This makes them
+;; a key helper in building up lazy seqs.
+
+;; a better practice is define random-ints from composing
+;; standard-library Clojure functions together without construct lazy
+;; sequence explicitly
+(def random-ints (repeatedly 10 (partial rand-int 50)))
+;= #'user/random-ints
+random-ints
+;= (5 29 26 1 37 6 32 45 24 43)
+
+;; the expression provided to lazy-seq can do just about anything. Any
+;; function implementing computation that is appropriate for a value
+;; in a sequence is fair game.
+
+;; all of the core sequence-processing functions in the standard
+;; library - such as map, for, filter, take and drop - return lazy
+;; sequence, and can be layered as needed without affecting the
+;; laziness of underlying seqs.
+
+;; next returns nil instead of an empty sequence, and this is only
+;; possible because next checks for a non-empty tail seq. This check
+;; forces the potential realization of the head of that nonempty tail
+;; seq. In contrast, rest returns the tail of a given sequence,
+;; thereby avoiding realizing its head and therefore maximizing
+;; laziness.
+
+;; sequential destructuring always uses next, and not rest.
+
+;; force the complete realization of a lazy sequence with doall and
+;; dorun. The difference is whether to retain the contents of the
+;; sequence.
+
+(dorun (take 5 random-ints))
+;= nil
+(doall (take 5 random-ints))
+;= (5 29 26 1 37)
+
+;; code defining lazy sequences should minimize side effects
+
+(apply str (remove (set "aeiouy")
+                   "vowels are useless! or maybe not..."))
+;= "vwls r slss! r mb nt..."
+
+;; head retention. In Clojure lazy sequences are persistent: an iterm
+;; is computed once, but is still retained by sequence. As a result,
+;; as long as you maintain a reference to a sequence, you'll prevent
+;; its items from being garbage-collected.
+
+(split-with neg? (range -5 5))
+;= [(-5 -4 -3 -2 -1) (0 1 2 3 4)]
+
+(let [[t d] (split-with #(< % 12) (range 1e8))]
+  [(count d) (count t)])
+; OutOfMemoryError GC overhead limit exceeded
+
+(let [[t d] (split-with #(< % 12) (range 1e8))]
+  [(count t) (count d)])
+;= [12 99999988]
+
+;; Associative
+(def m {:a 1 :b 2 :c 3})
+;= #'user/m
+(get m :b)
+;= 2
+(get m :d)
+;= nil
+(get m :d "not-found")
+;= "not-found"
+(assoc m :d 4)
+;= {:a 1, :c 3, :b 2, :d 4}
+(dissoc m :b)
+;= {:a 1, :c 3}
+(assoc m
+  :x 4
+  :y 5
+  :z 6)
+;= {:z 6, :y 5, :x 4, :a 1, :c 3, :b 2}
+(dissoc m :a :c)
+;= {:b 2}
+
+;; maps and vectors are both associative collections, where vectors
+;; associate values with indices
+(def v [1 2 3])
+;= #'user/v
+(get v 1)
+;= 2
+(get v 10)
+;= nil
+(get v 10 "not-found")
+;= "not-found"
+(assoc v
+  1 4
+  0 -12
+  2 :p)
+;= [-12 4 :p]
+(assoc v 3 10)
+;= [1 2 3 10]
+(assoc v 10 :what)
+;= IndexOutOfBoundException
+
+;; get works on sets, where it retuns the "key" if it exists
+(get #{1 2 3} 2)
+;= 2
+(get #{1 2 3} 4)
+;= nil
+(get #{1 2 3} 4 "not-found")
+;= "not-found"
+
+;; contains? is a predicate that returns true for an associative
+;; collection if the given key is present.
+(contains? [1 2 3] 0)
+;= true
+(contains? {:a 5 :b 6} :b)
+;= true
+(contains? {:a 5 :b 6} 6)
+;= false
+(contains? #{1 2 3} 1)
+;= true
+
+;; use some to check for the existence of a particular value in a
+;; collection
+
+(get "Clojure" 3)
+;= \j
+(contains? (java.util.HashMap.) "not-there")
+;= false
+(get (into-array [1 2 3]) 0)
+;= 1
+
+;; beware of nil, false values
+
+;; find works like get except that it returns the whole entry, or, nil
+;; when not found
+(find {:ethel nil} :lucy)
+;= nil
+(find {:ethel nil} :ethel)
+;= [:ethel nil]
+
+;; find works well with destructuring and conditional forms like
+;; if-let, or when-let
+(if-let [e (find {:a 5 :b 6} :a)]
+  (format "found %s => %s" (key e) (val e))
+  "not found")
+;= "found :a => 5"
+(if-let [[k v] (find {:a 5 :b 6} :a)]
+  (format "found %s => %s" k v)
+  "not found")
+;= "found :a => 5"
+
+;; Indexed [ page 103 ]
+
+
+
+
+
+
+
 
 
 
