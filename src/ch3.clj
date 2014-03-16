@@ -420,9 +420,226 @@ random-ints
   "not found")
 ;= "found :a => 5"
 
-;; Indexed [ page 103 ]
+;; Indexed
 
+;; excessive indexed lookup or modification is a code smell
 
+;; nth is a specializationof get. They differ on how they deal with
+;; out-fo-bounds indices: nth throws an exception while get returns
+;; nil.
+
+(nth [:a :b :c] 2)
+;= :c
+(get [:a :b :c] 2)
+;= :c
+(nth [:a :b :c] 3)
+;= java.lang.IndexOutOfBoundsException
+(get [:a :b :c] 3)
+;= nil
+(nth [:a :b :c] -1)
+;= java.lang.IndexOutOfBoundsException
+(get [:a :b :c] -1)
+;= nil
+
+;; when providing a default value, they are semantics identical
+(nth [:a :b :c] -1 :not-found)
+;= :not-found
+(get [:a :b :c] -1 :not-found)
+;= :not-found
+
+;; when the subject of the lookup is not supported, get returns nil
+;; while nth throws an exception
+(get 42 0)
+;= nil
+(nth 42 0)
+;= java.lang.UnsupportedOperationException: nth not supported on this
+;type: Long
+
+;; Clojure supports stack abstration via three operations: conj, pop,
+;; and peek
+;; Both lists and vectors can be used as stack
+;; Use a list as a stack
+(conj '() 1)
+;= (1)
+(conj '(2 1) 3)
+;= (3 2 1)
+(peek '(3 2 1))
+;= 3
+(pop '(3 2 1))
+;= (2 1)
+(pop '(1))
+;= ()
+
+;; Use a vector as a stack
+(conj [] 1)
+;= [1]
+(conj [1 2] 3)
+;= [1 2 3]
+(peek [1 2 3])
+;= 3
+(pop [1 2 3])
+;= [1 2]
+(pop [1])
+;= []
+
+;; popping an empty stack will result in an error
+(pop [])
+;= IllegalStateException: can't pop empty vector
+(pop ())
+;= IllegalStateException: can't pop empty list
+
+;; Set
+(get #{1 2 3} 2)
+;= 2
+(get #{1 2 3} 4)
+;= nil
+(get #{1 2 3} 4 :not-found)
+;- :not-found
+
+;; use disj to remove value(s) from a set
+(disj #{1 2 3} 3 1)
+;= #{2}
+
+(sort (keys (ns-publics 'clojure.set)))
+;= (difference index intersection join map-invert project rename
+;rename-keys select subset? superset? union)
+
+;; Sorted. Only maps and set are available in sorted variants. They do
+;; not have any literal notation; they may be created by sorted-map
+;; and sorted-set, or sorted-map-by and sorted-set-by
+(def sm (sorted-map :z 5 :x 9 :y 0 :b 2 :a 3 :c 4))
+;= #'user/sm
+sm
+;= {:a 3, :b 2, :c 4, :x 9, :y 0, :z 5}
+(rseq sm)
+;= ([:z 5] [:y 0] [:x 9] [:c 4] [:b 2] [:a 3])
+(subseq sm <= :c)
+;= ([:a 3] [:b 2] [:c 4])
+(subseq sm > :b <= :y)
+;= ([:c 4] [:x 9] [:y 0])
+(rsubseq sm > :b <= :y)
+;= ([:y 0] [:x 9] [:c 4])
+
+;; compare function defines the default sort
+(compare 3 3)
+;= 0
+(compare "ab" "abc")
+;= -1
+(compare ["a" "b" "c"] ["a" "b"])
+;= 1
+(compare ["a" 2] ["a" 2 0])
+;= -1
+
+;; Comparators and predicates to define ordering [ page 107 ]
+
+;; compare supprts anything that implements java.lang.Comparable. It
+;; is the default comparator.
+
+;; All Clojure functions implement java.util.Comparator and can
+;; therefore be used as comparators
+
+;; examples using comparison functions
+(sort < (repeatedly 10 #(rand-int 100)))
+;= (17 19 19 19 32 63 64 77 85 97)
+(sort-by first > (map-indexed vector "Clojure"))
+;= ([6 \e] [5 \r] [4 \u] [3 \j] [2 \o] [1 \l] [0 \C])
+
+;; use comparator function to turn a two-argument predicate into a
+;; comparator function
+((comparator <) 1 4)
+;= -1
+((comparator <) 4 1)
+;= 1
+((comparator <) 4 4)
+;= 0
+
+(sorted-map-by compare :z 5 :x 9 :y 0 :b 2 :a 3 :c 4)
+;= {:a 3, :b 2, :c 4, :x 9, :y 0, :z 5}
+(sorted-map-by (comp - compare) :z 5 :x 9 :y 0 :b 2 :a 3 :c 4)
+;= {:z 5, :y 0, :x 9, :c 4, :b 2, :a 3}
+
+;; sort order defines equality within a sorted map or set
+(defn magnitude [x]
+  (-> x Math/log10 Math/floor))
+;= #'user/magnitude
+(magnitude 100)
+;= 2.0
+(magnitude 123)
+;= 2.0
+(magnitude 1000000)
+;= 6.0
+
+;; create a comparison predicate using magnitude
+(defn compare-magnitude [a b]
+  (- (magnitude a) (magnitude b)))
+;= #'user/compare-magnitude
+((comparator compare-magnitude) 10 10000)
+;= -1
+;; why it returns -1 following two expressions ????
+((comparator compare-magnitude) 10000 10)
+;= -1  
+((comparator compare-magnitude) 10 10)
+;= -1
+
+(sorted-set-by compare-magnitude 10 1000 500)
+;= #{10 500 1000}
+(conj *1 600)
+;= #{10 500 1000}
+(disj *1 750)
+;= #{10 1000}
+(contains? *1 1239)
+;= true
+
+;; rewrite compare-magnitude to make sure only equivalent numbers are
+;; considered equal
+(defn compare-magnitude [a b]
+  (let [diff (- (magnitude a) (magnitude b))]
+    (if (zero? diff)
+      (compare a b)
+      diff)))
+;= #'user/compare-magnitude
+
+(sorted-set-by compare-magnitude 10 1000 500)
+;= #{10 500 1000}
+(conj *1 600)
+;= #{10 500 600 1000}
+(disj *1 750)
+;= #{10 500 600 1000}
+(contains? *1 1239)
+;= false
+
+(def ss (sorted-set-by compare-magnitude 10 1000 500 670 1239))
+;= #'user/ss
+ss
+;= #{10 500 670 1000 1239}
+(subseq ss > 500)
+;= (670 1000 1239)
+(subseq ss > 500 <= 1000)
+;= (670 1000)
+(rsubseq ss > 500 <= 1000)
+;= (1000 670)
+
+;; implement linear imterpolate
+(defn interpolate
+  "Takes a collection of points (as [x y] tuples), returning a function
+which is a linear interpolation between those points"
+  [points]
+  (let [results (into (sorted-map) (map vec points))]
+    (fn [x]
+      (let [[xa ya] (first (rsubseq results <= x))
+            [xb yb] (first (subseq results > x))]
+        (if (and xa xb)
+          (/ (+ (* ya (- xb x)) (* yb (- x xa)))
+             (- xb xa))
+          (or ya yb))))))
+;= #'user/interpolate
+
+(def f (interpolate [[0 0] [10 10] [15 5]]))
+;= #'user/f
+(map f [2 10 12])
+;= (2 10 8)
+
+;; Concise collection access [ page 111 ]
 
 
 
