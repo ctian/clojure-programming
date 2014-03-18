@@ -641,19 +641,303 @@ which is a linear interpolation between those points"
 
 ;; Concise collection access [ page 111 ]
 
+;; Collections are functions
+(get [:a :b :c] 2)
+;= :c
+([:a :b :c] 2)
+;= :c
+(get {:a 5 :b 6} :b)
+;= 6
+({:a 5 :b 6} :b)
+;= 6
+(:b {:a 5 :b 6})
+;= 6
+(get {:a 5 :b 6} :c 7)
+;= 7
+({:a 5 :b 6} :c 7)
+;= 7
+(get #{1 2 3} 3)
+;= 3
+(#{1 2 3} 3)
+;= 3
+([:a :b :c] -1)
+;= java.lang.IndexOutOfBoundsException: null
 
+;; the most common types of keys, keywords and symbols, are functions
+;; that look themselves up in the provided collection
+(get {:a 5 :b 6} :b)
+;= 6
+(:b {:a 5 :b 6})
+;= 6
+(get {:a 5 :b 6} :c 7)
+;= 7
+(:c {:a 5 :b 6} 7)
+;= 7
+(get #{:a :b :c} :d)
+;= nil
+(:d #{:a :b :c})
+;= nil
 
+(defn get-foo [map]
+  (:foo map))
+;= #'user/get-foo
 
+(get-foo nil)
+;= nil
 
+(defn get-bar [map]
+  (map :bar))
+;= #'user/get-bar
 
+(get-bar nil)
+;= java.lang.NullPointerException: null
 
+('a {'a 5 'b 6})
+;= 5
 
+;; if a collection has keys other than keywords or symbols, you have
+;; to use the collection or get or nth as the lookup function
 
+;; use collection or keywords, symbols as inputs to high-order
+;; functions
+(map :name [{:age 21 :name "David"}
+            {:gender :f :name "Suzanne"}
+            {:name "sara" :location "NYC"}])
+;= ("David" "Suzanne" "sara")
 
+(filter :age [{:age 21 :name "David"}
+              {:gender :f :name "Suzanne"}
+              {:name "Sara" :location "NYC"}])
+;= ({:age 21, :name "David"})
 
+(filter (comp (partial <= 25) :age) [{:age 21 :name "David"}
+                                    {:gender :f :name "Suzanne" :age 20}
+                                    {:name "Sara" :location "NYC" :age 34}])
+;= ({:age 34, :name "Sara", :location "NYC"})
 
+(remove #{5 7} (cons false (range 10)))
+;= (false 0 1 2 3 4 6 8 9)
 
+;; problem when nil or false is the value in the collection
+(remove #{5 7 false} (cons false (range 10)))
+;= (false 0 1 2 3 4 6 8 9)
 
+;; workaround
+(remove (partial contains? #{5 7 false}) (cons false (range 10)))
+;= (0 1 2 3 4 6 8 9)
 
+;; Clojure lists are singly linked and are only efficiently accessed
+;; or "modified" at their head.
 
+;; lists are their own sequences
+'(1 2 3)
+;= (1 2 3)
+
+'(1 2 (+ 1 2))
+;= (1 2 (+ 1 2))
+
+;; list function accepts any number of values, each will become an
+;; element of the returned list
+(list 1 2 (+ 1 2))
+;= (1 2 3)
+
+(list? '( 1 2 3))
+;= true
+(list? [1 2 3])
+;= false
+
+;; create vectors using vector or vec
+(vector 1 2 3)
+;= [1 2 3]
+(vec '(1 2 3))
+;- [1 2 3]
+(vec (range 10))
+;= [0 1 2 3 4 5 6 7 8 9]
+
+:: vectors as tuples
+(defn euclidian-division [x y]
+  [(quot x y) (rem x y)])
+;= #'user/euclidian-division
+(euclidian-division 42 8)
+;= [5 2]
+
+((juxt quot rem) 42 8)
+;= [5 2]
+
+(let [[q r] (euclidian-division 53 7)]
+  (str "53/7 = " q " * 7 + " r))
+;= "53/7 = 7 * 7 + 4"
+
+;; for functions that are part of a public API and for nontrivial
+;; return values, maps are a better fit than vectors
+
+;; appropriate use of vectors as tuples
+(def point-3d [42 26 -7])
+
+(def travel-legs [["LYS" "FRA"] ["FRA" "PHL"] ["PHL" "RDU"]])
+
+#{1 2 3}
+;= #{1 2 3}
+
+#{1 2 3 3}
+; clojure.lang.LispReader$ReaderException:
+; java.lang.IllegalArgumentException: Duplicate key: 3
+
+;; create unsorted set with hash-set and set function
+(hash-set :a :b :c :d)
+;= #{:a :c :b :d}
+(set [1 6 1 8 3 7 7])
+;= #{1 3 6 7 8}
+
+(apply str (remove (set "aeiouy") "vowels are useless"))
+;= "vwls r slss"
+
+(defn numeric? [s] (every? (set "0123456789") s))
+;= #'user/numeric?
+(numeric? "123")
+;= true
+(numeric? "42b")
+;= false
+
+(def numeric? (partial every? (set "0123456789")))
+;= #'user/numeric?
+(numeric? "123")
+;= true
+(numeric? "0xff")
+;= false
+
+{:a 5 :b 6}
+;= {:a 5, :b 6}
+{:a 5 :a 5}
+; clojure.lang.LispReader$ReaderException:
+; java.lang.IllegalArgumentException: Duplicate key: :a
+
+;; create unsorted map with hash-map
+(hash-map :a 5 :b 6)
+;= {:a 5, :b 6}
+(apply hash-map [:a 5 :b 6])
+;= {:a 5, :b 6}
+
+(def m {:a 1 :b 2 :c 3})
+(keys m)
+;= (:a :c :b)
+(vals m)
+;= (1 3 2)
+
+(map key m)
+;= (:a :c :b)
+(map val m)
+;= (1 3 2)
+
+(def playlist
+  [{:title "Elephant", :artist "The White Stripes", :year 2003}
+   {:title "Helioself", :artist "Papas Fritas", :year 1997}
+   {:title "Stories from the City, Stories from the Sea",
+    :artist "PJ Harvey", :year 2000}
+   {:title "Buildings and Grounds", :artist "Papas Fritas", :year 2000}
+   {:title "Zen Rodeo", :artist "Mardi Gras BB", :year 2002}])
+
+(map :title playlist)
+;= ("Elephant" "Helioself" "Stories from the City, Stories from the Sea"
+;"Buildings and Grounds" "Zen Rodeo")
+
+(defn summarize [{:keys [title artist year]}]
+  (str title " / " artist " / " year))
+
+(map summarize playlist)
+;= ("Elephant / The White Stripes / 2003" "Helioself / Papas Fritas / 1997" "Stories from the City, Stories from the Sea / PJ Harvey / 2000" "Buildings and Grounds / Papas Fritas / 2000" "Zen Rodeo / Mardi Gras BB / 2002")
+
+;; partition a collection according to a function using group-by
+(group-by #(rem % 3) (range 10))
+;= {0 [0 3 6 9], 1 [1 4 7], 2 [2 5 8]}
+
+(group-by :artist playlist)
+;= {"The White Stripes" [{:artist "The White Stripes", :year 2003,
+;:title "Elephant"}], "Papas Fritas" [{:artist "Papas Fritas", :year
+;1997, :title "Helioself"} {:artist "Papas Fritas", :year 2000, :title
+;"Buildings and Grounds"}], "PJ Harvey" [{:artist "PJ Harvey", :year
+;2000, :title "Stories from the City, Stories from the Sea"}], "Mardi Gras BB" [{:artist "Mardi Gras BB", :year 2002, :title "Zen Rodeo"}]}
+
+;; indexing on two "columns"
+(group-by (juxt :col1 :col2) data)
+
+(into {} (for [[k v] (group-by key-fn coll)]
+           [k (summarize v)]))
+
+;; the following function can be used to compute all kinds of
+;; summaries on data
+(defn reduce-by
+  [key-fn f init coll]
+  (reduce (fn [summaries x]
+            (let [k (key-fn x)]
+              (assoc summaries k (f (summaries k init) x))))
+          {} coll))
+
+;; the more generic your code is, the less specific the names you use
+;; are going to be
+
+(def orders
+  [{:product "Clock", :customer "Wile Coyote", :qty 6, :total 300}
+   {:product "Dynamite", :customer "Wile Coyote", :qty 20, :total 5000}
+   {:product "Shotgun", :customer "Elmer Fudd", :qty 2, :total 800}
+   {:product "Shells", :customer "Elmer Fudd", :qty 4, :total 100}
+   {:product "Hole", :customer "Wile Coyote", :qty 1, :total 1000}
+   {:product "Anvil", :customer "Elmer Fudd", :qty 2, :total 300}
+   {:product "Anvil", :customer "Wile Coyote", :qty 6, :total 900}])
+
+;; total by customer
+(reduce-by :customer #(+ %1 (:total %2)) 0 orders)
+{"Elmer Fudd" 1200, "Wile Coyote" 7200}
+
+;; get the customers for each product
+(reduce-by :product #(conj %1 (:customer %2)) #{} orders)
+;= {"Anvil" #{"Wile Coyote" "Elmer Fudd"}, "Hole" #{"Wile Coyote"},
+;"Shells" #{"Elmer Fudd"}, "Shotgun" #{"Elmer Fudd"}, "Dynamite"
+;#{"Wile Coyote"}, "Clock" #{"Wile Coyote"}}
+
+;; get two-level breakup
+(reduce-by (juxt :customer :product) #(+ %1 (:total %2)) 0 orders)
+;= {["Wile Coyote" "Anvil"] 900, ["Elmer Fudd" "Anvil"] 300, ["Wile
+;Coyote" "Hole"] 1000, ["Elmer Fudd" "Shells"] 100, ["Elmer Fudd"
+;"Shotgun"] 800, ["Wile Coyote" "Dynamite"] 5000, ["Wile Coyote"
+;"Clock"] 300}
+
+;; change reduce-by to support nested maps
+(defn reduce-by-in 
+  [keys-fn f init coll]
+  (reduce (fn [summaries x]
+            (let [ks (keys-fn x)]
+              (assoc-in summaries ks
+                        (f (get-in summaries ks init) x))))
+          {} coll))
+;= #'user/reduce-by-in
+
+(reduce-by-in (juxt :customer :product) #(+ %1 (:total %2)) 0 orders)
+;= {"Elmer Fudd" {"Anvil" 300, "Shells" 100, "Shotgun" 800}, "Wile Coyote" {"Anvil" 900, "Hole" 1000, "Dynamite" 5000, "Clock" 300}}
+
+;; convert flat breakup to nested map
+(def flat-breakup
+  {["Wile Coyote" "Anvil"] 900,
+   ["Elmer Fudd" "Anvil"] 300,
+   ["Wile Coyote" "Hole"] 1000,
+   ["Elmer Fudd" "Shells"] 100,
+   ["Elmer Fudd" "Shotgun"] 800,
+   ["Wile Coyote" "Dynamite"] 5000,
+   ["Wile Coyote" "Clock"] 300})
+
+(reduce #(apply assoc-in %1 %2) {} flat-breakup)
+;= {"Elmer Fudd" {"Anvil" 300, "Shotgun" 800, "Shells" 100}, "Wile Coyote" {"Hole" 1000, "Dynamite" 5000, "Clock" 300, "Anvil" 900}}
+
+(def v (vec (range 1e6)))
+;= #'user/v
+(count v)
+;= 1000000
+(def v2 (conj v 1e6))
+;= #'user/v2
+(count v2)
+;= 1000001
+(count v)
+;= 1000000
+
+;; Persistence and structural sharing [ page 123 ]
 
