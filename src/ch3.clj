@@ -941,3 +941,198 @@ which is a linear interpolation between those points"
 
 ;; Persistence and structural sharing [ page 123 ]
 
+;; free versioning. Each "update" to a Clojure collection leaves that
+;; collection in its original state, and provides the new version.
+(def v1 {:name "Chas" :info {:age 31}})
+;= #'user/v1
+(def v2 (update-in v1 [:info :age] + 3))
+;= #'user/v2
+v1
+;= {:info {:age 31}, :name "Chas"}
+v2
+;= {:info {:age 34}, :name "Chas"}
+
+;; transient collections are mutable
+(def x (transient []))
+;= #'user/x
+(def y (conj! x 1))
+;= #'user/y
+(count x)
+;= 1
+(count y)
+;= 1
+
+(into #{} (range 5))
+;= #{0 1 2 3 4}
+
+(defn naive-into [coll source]
+  (reduce conj coll source))
+;= #'user/naive-into
+
+(= (into #{} (range 500))
+   (naive-into #{} (range 500)))
+;= true
+
+(time (do (into #{} (range 1e6))
+          nil))
+; "Elapsed time: 1211.430502 msecs"
+;= nil
+
+(time (do (naive-into #{} (range 1e6))
+          nil))
+; "Elapsed time: 1355.889924 msecs"
+;= nil
+
+(defn fast-into [coll source]
+  (persistent! (reduce conj! (transient coll) source)))
+;= #'user/fast-into
+
+(time (do (fast-into #{} (range 1e6))
+          nil))
+; "Elapsed time: 651.809098 msecs"
+;= nil
+
+;; When confronted with a performance problem, allocations are
+;; generally the first thing to to profile in a Clojure program
+
+;; ONLY vectors and unsorted maps and sets have transient variants.
+
+;; clojure.lang.IEditableCollection is the interface Clojure uses to
+;; indicatae that a collection can produce a transient variant
+(defn transient-capable?
+  "Return true if a transient can be obtained for the given collection.
+i.. tests if '(transient coll)' will succeed."
+  [coll]
+  (instance? clojure.lang.IEditableCollection coll))
+;= #'user/transient-capable?
+
+(transient-capable? #{})
+;= true
+(transient-capable? "string")
+;= false
+(transient-capable? (sorted-set :a :b))
+;= false
+
+;; a persistent collection used as the basis of a transient is
+;; unaffected
+(def v [1 2])
+;= #'user/v
+(def tv (transient v))
+;= #'user/tv
+(conj v 3)
+;= [1 2 3]
+v
+;= [1 2]
+tv
+;= #<TransientVector
+;clojure.lang.PersistentVector$TransientVector@1c384a7c>
+
+;; turning a transient collection into a persistent one by using
+;; persistent! make the source transient unusable
+(persistent! tv)
+(get tv 0)
+
+(nth (transient [1 2]) 1)
+;= 2
+(get (transient {:a 1 :b 2}) :a)
+;= 1
+((transient {:a 1 :b 2}) :a)
+;= 1
+((transient [1 2]) 1)
+;= 2
+(find (transient {:a 1 :b 2}) :a)
+; java.lang.ClassCastException:
+; clojure.lang.PersistentArrayMap$TransientArrayMap
+; cannot be cast to java.util.Map
+
+;; transients are functions
+
+;; seq is not supported on transients
+
+(let [tm (transient {})]
+  (doseq [x (range 100)]
+    (assoc! tm x 0))
+  (persistent! tm))
+;= {0 0, 1 0, 2 0, 3 0, 4 0, 5 0, 6 0, 7 0}
+
+;; there is a concurrency safeguard built into transients ensuring
+;; that ony the thread that creates a given transient can ever use or
+;; modify it.
+(let [t (transient {})]
+  @(future (get t :a)))
+;java.util.concurrent.ExecutionException:
+;java.lang.IllegalAccessError: Transient used by non-owner thread
+
+;; transients don't compose well. persistent! will not traverse a
+;; hierachyt of nested transients
+(persistent! (transient [(transient {})]))
+;= [#<TransientArrayMap clojure.lang.PersistentArrayMap$TransientArrayMap@6f2cc358>]
+
+(= (transient [1 2]) (transient [1 2]))
+;= false
+
+;; transients and their mutability should not be let out to mix with
+;; collections with polite semantics. They are strictly a local
+;; optimization that you should keep hidden.
+
+;; Metadata is data about other data.
+;; metadata in Clojure is a much more generalized facility that can be
+;; used in applications and with data.
+
+;; metadata can be attached to any Clojure data structure and always
+;; takes the form of a map.
+
+(def a ^{:created (System/currentTimeMillis)}
+  [1 2 3])
+;= #'user/a
+(meta a)
+;= {:created 1395288066921}
+
+;; short form for metadata contains only keyword keys and Boolean true
+;; value
+(meta ^:private [1 2 3])
+;= {:private true}
+(meta ^:private ^:dynamic [1 2 3])
+;= {:dynamic true, :private true}
+
+;; update metadata with functions with-meta and vary-meta
+(def b (with-meta a (assoc (meta a)
+                      :modified (System/currentTimeMillis))))
+;= #'user/b
+(meta b)
+;= {:modified 1395288339222, :created 1395288066921}
+b
+;= [1 2 3]
+(def b (vary-meta a assoc :modified (System/currentTimeMillis)))
+;= #'user/b
+(meta b)
+;= {:modified 1395288465542, :created 1395288066921}
+
+;; changing a value's metadata does not impact things like how the
+;; value printts or its equality
+(= a b)
+;= true
+a
+;= [1 2 3]
+b
+;= [1 2 3]
+(= ^{:a 5} 'any-value
+   ^{:b 6} 'any-value)
+;= true
+
+;; metadata does NOT affect values immutability. Operations that
+;; "modify" data structures return new data structures that retain the
+;; original metadata
+(meta (conj a 500))
+;= {:created 1395288066921}
+(meta a)
+;= {:created 1395288066921}
+
+;; putting Clojure's collections to work [ page 136 ]
+
+
+
+
+
+
+
