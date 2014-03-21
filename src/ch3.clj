@@ -1130,6 +1130,12 @@ b
 
 ;; putting Clojure's collections to work [ page 136 ]
 
+;; The way you structure and model you data determines the shape of
+;; your code. Modeling data well in Clojure puts the focus on values
+;; (particularly composite values), natural identifiers, and sets and
+;; maps.
+
+
 
 
 
